@@ -1,6 +1,6 @@
 import pandas as pd
 import os
-PATH = '/data/hawfinch/clarkson/data/us_eq'
+PATH = '/home/clarkson/data/us_eq'
 
 try:
     os.mkdir('{}/cache'.format(PATH))
@@ -17,7 +17,7 @@ for folder in os.listdir(PATH):
 
 returns.set_index(['date', 'ticker'], inplace=True)
 returns.sort_index(inplace=True)
-returns.to_pickle('{}/cached_multi.pkl'.format(PATH))
+returns.to_pickle('{}/cache/cached_multi.pkl'.format(PATH))
 
 
 
