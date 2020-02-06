@@ -3,31 +3,30 @@ import matplotlib.pyplot as plt
 
 
 # TODO: change name of this to eigval for clarity.
-def mp_eval_bounds(Q, sigma=1):
+def mp_eval_bounds(gamma, sigma=1):
     """
     Compute the max and min eigenvalues for the MP density parameterised by lambda=lam and sigma
     :returns maximum eigenvalue, minimum eigenvalue
     """
-    return np.power(sigma * (1 - np.sqrt(1/Q)), 2), np.power(sigma * (1 + np.sqrt(1/Q)), 2)
+    return np.power(sigma * (1 - np.sqrt(gamma)), 2), np.power(sigma * (1 + np.sqrt(gamma)), 2)
 
 
-def mp_pdf(x, M, T, sigma=1):
+def mp_pdf(x, p, n, sigma=1):
     '''
-    Evaluate the Marcenko-Pastur density at x, where the MP density is parameterised by
-    sigma and lambda=n/p and X is a matrix of the form AA'.
+    Evaluate the Marcenko-Pastur density at x, where the MP density is parameterised by sigma and gamma=p/n and X is a pxp matrix of the form AA', where A is pxn.
     :param x: The data points x at which to evaluate the density.
-    :param n: The number of data points.
     :param p: The number of features.
+    :param n: The number of data points.
     :param sigma: The variance of the data generating distribution.
     '''
-    Q = T / M
-    print('Q: {}'.format(Q))
+    gamma = p / n
+    print('Gamma: {}'.format(gamma))
     # TODO: update this to include both cases of the MP-density.
-    assert Q >= 1, "Invalid dimension ratio for input matrix X"
-    min_eval, max_eval = mp_eval_bounds(Q, sigma)
+#     assert Q >= 1, "Invalid dimension ratio for input matrix X"
+    min_eval, max_eval = mp_eval_bounds(gamma, sigma)
 
     def f(z):
-        return (Q * np.sqrt((max_eval - z)*(z - min_eval))) / (z * 2 * np.pi * (sigma ** 2))
+        return (np.sqrt((max_eval - z)*(z - min_eval))) / (2 * np.pi * (sigma ** 2) * gamma * z)
     y = np.copy(x)
 #     print('Unfiltered: {}'.format(y))
 
@@ -40,30 +39,31 @@ def mp_pdf(x, M, T, sigma=1):
     return y
 
 
-def compare_spectrum_to_mp(X, T, sigma):
+def compare_spectrum_to_mp(X, n, sigma, upper=None):
     '''
     Overlay the relevant Marcenko-Pastur density over the spectrum of the matrix X.
-    :param X: Matrix of the form 1/T * AA'.
-    :param T: The number of columns in the matrix A (where A is an MxT matrix).
+    :param X: Matrix of the form 1/p * AA'.
+    :param T: The number of columns in the matrix A (where A is an pxn matrix).
     :param sigma: The variance of the (Gaussian) distribution for the entries of the random matrix in the mp density.
+    :param upper: The upper bound on eigenvalues to appear in the plot. Example: -1 would omit the largest eigenvalue from the plots, -2 the 2 largest eigenvalues etc.
     '''
     assert np.allclose(X.T, X)
     e = np.linalg.eigvalsh(X)
-    print(e)
-    plt.plot(e[:-1])
+    plt.plot(e[:upper])
     plt.show()
     e = np.clip(e, .0001, e.max() + 1)  # Clip very small eigenvalues
     print('True: ', e.min(), e.max())
     fig, ax = plt.subplots(1, 1)
-    ax.hist(e, density=True, bins=50)
-#     ax.hist(e, density=True, bins=50)
+    ax.hist(e[:upper], density=True, bins=50, edgecolor='black', linewidth=1.2)
 
     ax.set_autoscale_on(True)
+    ax.set_xlabel('Eigenvalue')
+    ax.set_ylabel('Probability Density')
     print(X.shape)
-    M = X.shape[0]
-    print('M: {}'.format(M))
-    min, max = mp_eval_bounds(T/M, sigma)
+    p = X.shape[0]
+    print('p: {}'.format(p))
+    min, max = mp_eval_bounds(p/n, sigma)
     print('min: {} | max: {}'.format(min, max))
-    x = np.linspace(min + 0.0001, max, 5000)
-    ax.plot(x, mp_pdf(x, M, T, sigma), linewidth=4, color='r')
+    x = np.linspace(min , max, 5000)
+    ax.plot(x, mp_pdf(x, p, n, sigma), linewidth=4, color='r')
     plt.show()

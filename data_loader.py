@@ -18,6 +18,3 @@ for folder in os.listdir(PATH):
 returns.set_index(['date', 'ticker'], inplace=True)
 returns.sort_index(inplace=True)
 returns.to_pickle('{}/cache/cached_multi.pkl'.format(PATH))
-
-
-
