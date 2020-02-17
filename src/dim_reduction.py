@@ -37,10 +37,12 @@ class LinearFactorModel:
             fr = self.project_factors(data)
         return data - self.models.predict(fr)
 
+    @property
+    def n_components_(self):
+        raise NotImplementedError
+
 class PcaPctVar(LinearFactorModel):
-    def __init__(self, data, pct_var=50):
-        self.scores = pd.DataFrame(columns=data.columns.values, index=data.index)
-        self.pca_info = pd.DataFrame(index=data.index, columns=['n_comp'])
+    def __init__(self, pct_var=50):
         self.pct_var = pct_var
         self.pca = PCA(n_components=(pct_var/100.0), svd_solver='full')
         self.scaler = StandardScaler()
@@ -55,9 +57,11 @@ class PcaPctVar(LinearFactorModel):
         data. 
         """
         fr = self.corr_pca.fit_transform(data)
-        date = data.iloc[-1].name
-        self.pca_info.loc[date, 'n_comp'] = self.pca.n_components_
         return fr
 
     def project_factors(self, data):
         return self.corr_pca.transform(data.values)
+
+    @property
+    def n_components_(self):
+        return self.pca.n_components_
