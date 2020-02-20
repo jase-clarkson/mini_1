@@ -4,64 +4,81 @@ import matplotlib.pyplot as plt
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import Pipeline
+from sklearn.utils.extmath import stable_cumsum
 import sklearn.linear_model as lm
 import src.random_matrix as rm
 import statsmodels.api as sm
+from scipy import stats
 import math
 
 class LinearFactorModel:
     def __init__(self):
         self.models = None
         self.factors = None
-        self.fr = None
+        self.dr = None
+
+    def project_factors(self, data):
+        raise NotImplementedError
+
+    def fit_ols(self, fr, data):
+        self.models = lm.LinearRegression(fit_intercept=False).fit(fr, data)
+
+    def compute_residuals(self, window, fr):
+        return window - self.models.predict(fr)
+
+    def estimate_factors(self, data):
+        self.dr.fit(data)
+
+class Pca(LinearFactorModel):
+    def __init__(self, pct_var=None, rmt=None, dr_id='Pca'):
+        if pct_var is None:
+            if rmt is None:
+                raise ValueError('Must set pct_var or rmt variables')
+            else:
+                self.select_k_comp = self.mp_filter
+                self.id='{}|Rmt'.format(dr_id)
+        else:
+            self.select_k_comp = self.select_pct_var
+            self.pct_var = pct_var
+            self.id = '{}|PctVar={}'.format(dr_id, pct_var)
+
+
+        # self.dr = Pipeline([('normalize', StandardScaler()), ('pca', PCA(svd_solver='full'))])
+        self.dr = PCA()
+        self.dr_id = dr_id
+        self.fit_id = None
+
+    def project_factors(self, data):
+        x = self.dr.transform(data.values)
+        return x
+
+    def get_n_comp(self):
+        return self.n_components_
+
+    def get_factors(self):
+        # return self.select_k_comp(self.dr['pca'].components_)
+        return self.select_k_comp(self.dr.components_)
+
+    def select_pct_var(self, factors):
+        ratio_cumsum = stable_cumsum(self.dr.explained_variance_ratio_)
+        n_components = np.searchsorted(ratio_cumsum, (self.pct_var/100.0)) + 1
+        self.n_components_ = n_components
+        return self.dr.components_[:n_components]
     
-    def estimate_factors(self, data):
-        raise NotImplementedError
+    def mp_filter(self, factors):
+        pass
 
-    def project_factors(self, data):
-        raise NotImplementedError
+class SPca(Pca):
+    def __init__(self, pct_var=None, rmt=None):
+        super().__init__(pct_var=pct_var, rmt=rmt, dr_id='SPca')
 
-    @staticmethod
-    def estimate_betas_ols(data, fr):
-        """ Fit OLS models for the factors the the data"""
-        # return data.apply(lambda x: lm.LinearRegression(fit_intercept=False).fit(fr, data[x.name]))
-        return lm.LinearRegression(fit_intercept=False).fit(fr, data)
+    def get_factors(self):
+        # Threshold-factor pairs
+        comps = self.select_k_comp(self.dr.components_)
+        return np.array([thresh_vec(factor) for factor in comps])
 
-    def estimate_fm_ols(self, data):
-        self.fr = self.estimate_factors(data)
-        self.models = LinearFactorModel.estimate_betas_ols(data, self.fr)
-        return self.compute_residuals(data, self.fr)
+def thresh_vec(factor):
+    th = stats.median_absolute_deviation(factor) / .6745
+    factor[np.abs(factor) < th] = 0
+    return factor
 
-    def compute_residuals(self, data, fr=None):
-        if fr is None:
-            fr = self.project_factors(data)
-        return data - self.models.predict(fr)
-
-    @property
-    def n_components_(self):
-        raise NotImplementedError
-
-class PcaPctVar(LinearFactorModel):
-    def __init__(self, pct_var=50):
-        self.pct_var = pct_var
-        self.pca = PCA(n_components=(pct_var/100.0), svd_solver='full')
-        self.scaler = StandardScaler()
-        self.corr_pca = Pipeline([('normalize', self.scaler), ('pca', self.pca)])
-        
-    def estimate_factors(self, data):
-        """ 
-        Estimate factors from data using PCA, choosing the number of components such that at least 
-        (pct)% of the total explainable variance is retained. Return the data projected onto new subspace.
-        Notice that we perform PCA on the correlation matrix, not just the covariance matrix. This is 
-        equvialent to performing PCA on the covariance matrix of standardized (zero mean, unit variance)
-        data. 
-        """
-        fr = self.corr_pca.fit_transform(data)
-        return fr
-
-    def project_factors(self, data):
-        return self.corr_pca.transform(data.values)
-
-    @property
-    def n_components_(self):
-        return self.pca.n_components_
