@@ -53,7 +53,7 @@ def compare_spectrum_to_mp(X, n, sigma, upper=None):
     plt.show()
     e = np.clip(e, .0001, e.max() + 1)  # Clip very small eigenvalues
     print('True: ', e.min(), e.max())
-    fig, ax = plt.subplots(1, 1)
+    _, ax = plt.subplots(1, 1)
     ax.hist(e[:upper], density=True, bins=50, edgecolor='black', linewidth=1.2)
 
     ax.set_autoscale_on(True)

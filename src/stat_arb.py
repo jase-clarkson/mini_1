@@ -129,21 +129,26 @@ class StArbFm(Strategy):
                 # Fit to new window data
                 self.fm.estimate_factors(win_cent)                
                 self.id_tf_map[self.transform_id] = date
-            factors = self.fm.get_factors()
+            # factors = self.fm.get_factors(win_cent)
             # Compute factor returns
-            fr = np.matmul(win_cent.values, factors.T)
+            # fr = np.matmul(win_cent.values, factors.T)
+            fr = self.fm.project_factors(win_cent)
             self.fm.fit_ols(fr, win_cent)
             res = self.fm.compute_residuals(win_cent, fr)
             # From the residuals, compute portfolio weights.
             self.portfolio = self.compute_portfolio_weights(res)
         self.update(date, transforms)
 
+    # TODO: rename this
     def compute_log_returns(self, raw_returns):
         return raw_returns / raw_returns.ewm(span=252).std().shift(1)
 
     # TODO: make this generic to allow other pos sizing strategies.
     def compute_portfolio_weights(self, res):
         return -1 * res.ewm(span=self.span).mean().iloc[-1]
+        # m = res.ewm(span=self.span).mean()
+        # return -1 * (m.iloc[-1] - m.mad())
+        # return -1 * res.iloc[-1]
 
     def update_trackers(self, pf_ix):
         self.n_pcs[pf_ix] = self.fm.get_n_comp()
@@ -162,7 +167,6 @@ class Transforms:
 
     def register(self, tf, t_id):
         if t_id not in self.tfmrs:
-            # TODO: one day this will not just be corr_pca
             self.tfmrs[t_id] = tf.dr
             self.id_tf_map[t_id] = ''
             print('Registered {}'.format(t_id))
