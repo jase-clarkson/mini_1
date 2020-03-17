@@ -48,18 +48,21 @@ class Strategy:
         """ The idea of this is one can apply vol norm or whatever they want after."""
         return raw_lr
 
-    def pnl_reconciliation(self, data):
+    def pnl_reconciliation(self, data, filter_outliers=True):
         # Cleanup array        
         self.trading_days = self.trading_days[~pd.isna(self.trading_days)]
         # Remove null days
         self.portfolios = self.portfolios[:self.pf_ix, :]
         # Create dataframe from portfolio weights for easier manipulation.
         self.portfolios = pd.DataFrame(self.portfolios, index=self.trading_days, columns=data.columns.values)
+        self.portfolios = self.portfolios #* self.portfolios.expanding().std().fillna(value=1) / 2
         # Perform row-wise inner products between pf weights and daily returns.
         # This is achieved by Hadamard producit and then row-wise sum.
         self.raw_lr = pd.DataFrame(
             np.sum(data.loc[self.trading_days, :].values * self.portfolios, axis=1),
             index=self.trading_days, columns=[self.id])
+        if filter_outliers:
+            self.raw_lr = self.raw_lr[self.raw_lr < (self.raw_lr.std() * 5)]
         # The compute_log_returns custom function allows one to apply ex-post adjustments
         # that reflect sizing, for example rolling vol-normalization.
         self.lr = self.compute_log_returns(self.raw_lr)
@@ -121,34 +124,29 @@ class StArbFm(Strategy):
             window = data.iloc[ix-self.window_len:ix]
             # TODO: could have a rolling 60-day mean precomputed for each col before?
             # TODO: each strat can have it's own set of precomputed data it can access.
-            win_cent = pd.DataFrame(scale(window, with_mean=True, with_std=False), 
-            index=window.index, columns=window.columns.values)
-
+            # win_cent = pd.DataFrame(scale(window, with_mean=True, with_std=False), 
+            # index=window.index, columns=window.columns.values)
+            self.fm.factors = None
             # If the factors have already been calculated for this window and just need to choose k diff.
             if self.id_tf_map[self.transform_id] != date:
                 # Fit to new window data
-                self.fm.estimate_factors(win_cent)                
+                self.fm.estimate_factors(window)                
                 self.id_tf_map[self.transform_id] = date
             # factors = self.fm.get_factors(win_cent)
             # Compute factor returns
             # fr = np.matmul(win_cent.values, factors.T)
-            fr = self.fm.project_factors(win_cent)
-            self.fm.fit_ols(fr, win_cent)
-            res = self.fm.compute_residuals(win_cent, fr)
+            res = self.fm.compute_residuals(window)
             # From the residuals, compute portfolio weights.
             self.portfolio = self.compute_portfolio_weights(res)
         self.update(date, transforms)
 
-    # TODO: rename this
+    # TODO: rename this to apply bet sizing or something
     def compute_log_returns(self, raw_returns):
         return raw_returns / raw_returns.ewm(span=252).std().shift(1)
 
     # TODO: make this generic to allow other pos sizing strategies.
     def compute_portfolio_weights(self, res):
         return -1 * res.ewm(span=self.span).mean().iloc[-1]
-        # m = res.ewm(span=self.span).mean()
-        # return -1 * (m.iloc[-1] - m.mad())
-        # return -1 * res.iloc[-1]
 
     def update_trackers(self, pf_ix):
         self.n_pcs[pf_ix] = self.fm.get_n_comp()
