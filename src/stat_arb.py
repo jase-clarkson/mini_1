@@ -142,7 +142,7 @@ class StArbFm(Strategy):
 
     # TODO: rename this to apply bet sizing or something
     def compute_log_returns(self, raw_returns):
-        return raw_returns / raw_returns.ewm(span=252).std().shift(1)
+        return raw_returns / raw_returns.ewm(span=252).var().shift(1)
 
     # TODO: make this generic to allow other pos sizing strategies.
     def compute_portfolio_weights(self, res):

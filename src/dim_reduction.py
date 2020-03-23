@@ -35,6 +35,7 @@ class Pca(LinearFactorModel):
         self.setup_pca(corr)
         self.fit_id = None
         self.factors = None
+
     def setup_pca(self, corr):
         if corr:
             self.dr = Pipeline([('normalize', StandardScaler()), ('pca', PCA(svd_solver='full'))])
@@ -203,7 +204,7 @@ class RPca(LinearFactorModel):
     def get_n_comp(self):
         return np.linalg.matrix_rank(self.L)
 
-    def fit(self, D, tol=None, max_iter=1000, iter_print=100):
+    def fit(self, D, tol=None, max_iter=1000, iter_print=100, verbose=False):
         self.mu = np.prod(D.shape) / (4 * self.frobenius_norm(D))
         self.mu_inv = 1 / self.mu
         self.lmbda = 1 / np.sqrt(np.max(D.shape))
@@ -224,8 +225,9 @@ class RPca(LinearFactorModel):
             Yk = Yk + self.mu * (D - Lk - Sk)
             err = self.frobenius_norm(D - Lk - Sk)
             it += 1
-            # if (iter % iter_print) == 0 or iter == 1 or iter > max_iter or err <= _tol:
-            #     print('iteration: {0}, error: {1}'.format(iter, err))
+            if verbose:
+                if (it % iter_print) == 0 or it == 1 or it > max_iter or err <= _tol:
+                    print('iteration: {0}, error: {1}'.format(it, err))
 
         self.L = Lk
         self.S = Sk
