@@ -3,6 +3,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from sklearn.decomposition import PCA
 # from sklean.Pipeline import Pipeline
+from scipy.stats import norm
 import sklearn.linear_model as lm
 from sklearn.preprocessing import scale
 import src.random_matrix as rm
@@ -142,7 +143,7 @@ class StArbFm(Strategy):
 
     # TODO: rename this to apply bet sizing or something
     def compute_log_returns(self, raw_returns):
-        return raw_returns / raw_returns.ewm(span=252).var().shift(1)
+        return raw_returns / raw_returns.ewm(span=252).std().shift(1)
 
     # TODO: make this generic to allow other pos sizing strategies.
     def compute_portfolio_weights(self, res):
@@ -180,3 +181,19 @@ def score_sign(signal, data):
 def compute_vn_factor_return(factor, stock_returns, stdevs):
     """ Compute vol-normalized factor returns """
     return factor.dot(stock_returns.values / stdevs)
+
+def sharpe_ratio_test(log_ret):
+    '''
+    Implements the sharpe ratio test ion Opdyke 2007
+    :param log_ret: daily log-returns
+    :return: annualised sharpe ratio and p-value
+    '''
+    sharpe = log_ret.mean()/log_ret.std()
+    sharpe_annualised = sharpe * np.sqrt(252)    
+    T = len(log_ret)
+    std = log_ret.std()
+    skew = ((log_ret - log_ret.mean()) ** 3).mean()
+    kurtosis = ((log_ret - log_ret.mean()) ** 4).mean()    
+    sharpe_se = np.sqrt((1 + sharpe ** 2/ 4 * (kurtosis - 1) - sharpe * skew) / T)    
+    p_value = 1 - norm.cdf(sharpe/sharpe_se)    
+    return [sharpe_annualised.round(2), p_value]
