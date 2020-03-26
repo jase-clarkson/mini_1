@@ -201,3 +201,35 @@ def sharpe_ratio_test(log_ret):
     sharpe_se = np.sqrt((1 + sharpe ** 2/ 4 * (kurtosis - 1) - sharpe * skew) / T)    
     p_value = 1 - norm.cdf(sharpe/sharpe_se)    
     return [sharpe_annualised.round(2), p_value]
+
+def backtest(df_lr, strats, df_exc=None, benchmark=None, it=500):    
+    i = 0
+    tfmrs = Transforms()
+    for strat in strats:
+        strat.register_transforms(tfmrs)
+        strat.setup(df_lr)
+    for index, row in df_lr.iterrows():
+        for strat in strats:
+            strat.calibrate_portfolio(df_lr, index, tfmrs)
+        i += 1
+        if i % it == 0 and i > 250: print('Iteration: {}'.format(i))
+
+    for strat in strats:
+        strat.pnl_reconciliation(df_lr, filter_outliers=True)
+        print(sharpe_ratio_test(strat.lr))
+    plot_drawdowns(strats, benchmark, save=True)
+    
+def plot_drawdowns(strats, benchmark, save=False):
+    rets = [strat.cum_ret for strat in strats]
+    rets = pd.concat(rets, axis=1) * benchmark.std()
+    rets.plot(figsize=(10,6))
+    if benchmark is not None:
+        benchmark.cumsum().plot(label='SPY returns')
+    plt.legend()
+    plt.grid(axis='y', alpha=.7)
+    if save:
+        try:
+            os.mkdir('figs')
+        except FileExistsError:
+            pass
+        plt.savefig('figs/{}.eps'.format(pd.Timestamp.now()), format='eps', dpi=1200, bbox_inches='tight', rasterize=True)
