@@ -161,20 +161,13 @@ class SPca(Pca):
         factor[np.abs(factor) < delta] = 0
         return factor
 
+# Code adapted from from https://github.com/dganguli/robust-pca
 class RPca(LinearFactorModel):
     def __init__(self, mu=None, lmbda=None):
         self.config = False
         self.dr_id = 'RPca'
         self.id = 'RPca'
         self.dr = self
-        # if mu:
-        # else:
-        #     self.mu = 
-
-
-        # if lmbda:
-        #     self.lmbda = lmbda
-        # else:
 
     @staticmethod
     def frobenius_norm(M):
