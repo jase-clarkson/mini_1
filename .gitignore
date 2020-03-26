@@ -2,3 +2,9 @@ venv/
 src/__pycache__
 .ipynb_checkpoints
 src/.ipynb_checkpoints
+*.eps
+*.png
+*.svg
+.idea/
+.vscode/
+*.pdf
