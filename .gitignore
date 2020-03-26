@@ -8,3 +8,4 @@ src/.ipynb_checkpoints
 .idea/
 .vscode/
 *.pdf
+data/
