@@ -45,7 +45,7 @@ class Strategy:
         cal_ix = [i * self.cal_freq for i in range(1, n_recal)]
         self.cal_dates = data.iloc[cal_ix].index
 
-    def compute_log_returns(self, raw_lr):
+    def apply_pos_sizing(self, raw_lr):
         """ The idea of this is one can apply vol norm or whatever they want after."""
         return raw_lr
 
@@ -66,7 +66,7 @@ class Strategy:
             self.raw_lr = self.raw_lr[self.raw_lr < (self.raw_lr.std() * 5)]
         # The compute_log_returns custom function allows one to apply ex-post adjustments
         # that reflect sizing, for example rolling vol-normalization.
-        self.lr = self.compute_log_returns(self.raw_lr)
+        self.lr = self.apply_pos_sizing(self.raw_lr)
         # Compute the pnl process.
         self.cum_ret = self.lr.cumsum()
 
@@ -141,12 +141,16 @@ class StArbFm(Strategy):
             self.portfolio = self.compute_portfolio_weights(res)
         self.update(date, transforms)
 
-    # TODO: rename this to apply bet sizing or something
-    def compute_log_returns(self, raw_returns):
-        return raw_returns / raw_returns.ewm(span=252).std().shift(1)
+    def apply_pos_sizing(self, raw_returns):
+#         return raw_returns / raw_returns.ewm(span=252).std().shift(1)
+        return self.size_rolling_kelly(raw_returns, 1)
+    
+    def size_rolling_kelly(self, returns, frac=0.5):
+        return frac * returns / returns.ewm(span=252).std().shift(1)
 
     # TODO: make this generic to allow other pos sizing strategies.
     def compute_portfolio_weights(self, res):
+        # TODO: do we need to normalize this to be optimal??
         return -1 * res.ewm(span=self.span).mean().iloc[-1]
 
     def update_trackers(self, pf_ix):
