@@ -39,7 +39,7 @@ def mp_pdf(x, p, n, sigma=1):
     return y
 
 
-def compare_spectrum_to_mp(X, n, sigma, upper=None):
+def compare_spectrum_to_mp(X, n, sigma, upper=None, save=False):
     '''
     Overlay the relevant Marcenko-Pastur density over the spectrum of the matrix X.
     :param X: Matrix of the form 1/p * AA'.
@@ -49,12 +49,12 @@ def compare_spectrum_to_mp(X, n, sigma, upper=None):
     '''
     assert np.allclose(X.T, X)
     e = np.linalg.eigvalsh(X)
-    plt.plot(e[:upper])
-    plt.show()
+#     plt.plot(e[:upper])
+#     plt.show()
     e = np.clip(e, .0001, e.max() + 1)  # Clip very small eigenvalues
     print('True: ', e.min(), e.max())
     _, ax = plt.subplots(1, 1)
-    ax.hist(e[:upper], density=True, bins=50, edgecolor='black', linewidth=1.2)
+    ax.hist(e[:upper], density=True, bins=50, edgecolor='black', linewidth=1.2, color='white')
 
     ax.set_autoscale_on(True)
     ax.set_xlabel('Eigenvalue')
@@ -65,5 +65,8 @@ def compare_spectrum_to_mp(X, n, sigma, upper=None):
     min, max = mp_eval_bounds(p/n, sigma)
     print('min: {} | max: {}'.format(min, max))
     x = np.linspace(min , max, 5000)
-    ax.plot(x, mp_pdf(x, p, n, sigma), linewidth=4, color='r')
+    ax.plot(x, mp_pdf(x, p, n, sigma), linewidth=2, color='r')
+    if save:
+        plt.savefig('mp_histo.eps', format='eps', dpi=1200, bbox_inches='tight')
     plt.show()
+        
