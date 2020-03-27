@@ -1,9 +1,11 @@
-from lfm import LinearFactorModel
 import numpy as np
 import pandas as pd
+from sklearn.preprocessing import scale
+
+from .lfm import LinearFactorModel
 
 # Code adapted from from https://github.com/dganguli/robust-pca
-class RPca(LinearFactorModel):
+class Rpca(LinearFactorModel):
     def __init__(self, mu=None, lmbda=None):
         self.config = False
         self.dr_id = 'RPca'
@@ -30,7 +32,9 @@ class RPca(LinearFactorModel):
         if not self.config:
             self.setup(data)
             self.config = True
-        self.fit(data.values)
+        cent = pd.DataFrame(scale(data, with_mean=True, with_std=False), 
+            index=data.index, columns=data.columns.values)
+        self.fit(cent.values)
 
     def compute_residuals(self, data):
         return data - self.L

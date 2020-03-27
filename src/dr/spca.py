@@ -1,18 +1,19 @@
-from pca import Pca
+from .pca import Pca
 import numpy as np
 import pandas as pd
 from scipy import stats
+from sklearn.preprocessing import scale
 
-
-class SPca(Pca):
+class Spca(Pca):
     dr_id = 'SPca'
-    def __init__(self, k=None, alpha=None, corr=False):
+    def __init__(self, k=None, alpha=None, corr=False, robust=True):
         # super().__init__()
         self.dr_id = 'SPca'
         self.id = 'SPca'
         self.setup_pca(corr)
         self.subset_cols = None
         self.setup_subset_method(k, alpha)
+        self.robust = robust
 
     def setup_subset_method(self, k, alpha):
         if k is None:
@@ -49,10 +50,8 @@ class SPca(Pca):
         self.subset_cols = data.var().sort_values()[-self.k:].index.values
         return data[self.subset_cols]
         
-    def estimate_factors(self, data, k=61):
+    def estimate_factors(self, data):
         # Subset data
-        self.n_components_ = k
-        # self.subset_cols = data.var().sort_values()[-k:].index.values
         cent = pd.DataFrame(scale(data, with_mean=True, with_std=False), 
             index=data.index, columns=data.columns.values)
 
@@ -61,7 +60,7 @@ class SPca(Pca):
         comps = self.dr['pca'].components_
         # Scaling factor: sqrt(2logk)
         sf = np.sqrt(2 * np.log(comps.shape[0]))
-        self.factors = np.apply_along_axis(SPca.thresh_vec, 1, comps, sf).T
+        self.factors = np.apply_along_axis(Spca.thresh_vec, 1, comps, sf, self.robust).T
 
     @staticmethod
     def thresh_vec(factor, sf, robust=True):
