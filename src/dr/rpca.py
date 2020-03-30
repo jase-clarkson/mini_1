@@ -28,13 +28,16 @@ class Rpca(LinearFactorModel):
         self.S = np.zeros(D.shape)
         self.Y = np.zeros(D.shape)
 
-    def estimate_factors(self, data):
+    def estimate_factors(self, data, mc=False):
         if not self.config:
             self.setup(data)
             self.config = True
-        cent = pd.DataFrame(scale(data, with_mean=True, with_std=False), 
-            index=data.index, columns=data.columns.values)
-        self.fit(cent.values)
+        if mc:
+            cent = pd.DataFrame(scale(data, with_mean=True, with_std=False), 
+                index=data.index, columns=data.columns.values)
+            self.fit(cent)
+        else:
+            self.fit(data)
 
     def compute_residuals(self, data):
         return data - self.L
