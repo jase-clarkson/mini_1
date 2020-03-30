@@ -35,9 +35,9 @@ class Rpca(LinearFactorModel):
         if mc:
             cent = pd.DataFrame(scale(data, with_mean=True, with_std=False), 
                 index=data.index, columns=data.columns.values)
-            self.fit(cent)
+            self.fit(cent.values)
         else:
-            self.fit(data)
+            self.fit(data.values)
 
     def compute_residuals(self, data):
         return data - self.L
